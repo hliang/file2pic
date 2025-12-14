@@ -483,6 +483,7 @@
                 reader.onload = (e) => {
                     const text = e.target.result;
                     const pre = document.createElement('pre');
+                    pre.style.backgroundColor = '#f5f5f5';
                     // Limit preview to first 1000 characters
                     pre.textContent = text.length > 1000 ? text.substring(0, 1000) + '\n\n... (truncated)' : text;
                     previewDiv.innerHTML = '<div><strong>Preview:</strong></div>';
