@@ -142,15 +142,6 @@
             margin-top: 10px;
         }
 
-        .info {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            font-size: 14px;
-            color: #1565c0;
-        }
-
         .file-info {
             background: #f5f5f5;
             padding: 15px;
@@ -181,13 +172,6 @@
         }
 
         .format-options {
-            margin: 20px 0;
-        }
-
-        .format-options label {
-            margin-right: 20px;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
@@ -209,12 +193,6 @@
             </div>
             <input type="file" id="encode-file" onchange="handleEncodeFile(this.files[0])">
 
-            <div class="format-options">
-                <strong>Output Format:</strong><br>
-                <label><input type="radio" name="format" value="png" checked> PNG (Lossless, larger file)</label>
-                <label><input type="radio" name="format" value="jpeg"> JPEG (Lossy, smaller file)</label>
-            </div>
-
             <div class="preview" id="encode-preview">
                 <strong>Generated Image:</strong>
                 <img id="encode-image" alt="Encoded image">
@@ -227,20 +205,16 @@
                     <div class="progress-fill" id="encode-progress-fill"></div>
                 </div>
             </div>
-
-            <div class="info">
-                💡 <strong>Tip:</strong> PNG format preserves all data perfectly but creates larger images. JPEG creates smaller images but may have minor artifacts.
-            </div>
         </div>
 
         <!-- Decode Tab -->
         <div id="decode-tab" class="tab-content">
             <div class="upload-area" id="decode-upload" onclick="document.getElementById('decode-file').click()">
                 <div class="upload-icon">🖼️</div>
-                <div>Click to select an encoded image or drag & drop</div>
-                <div style="font-size: 12px; color: #999; margin-top: 5px;">PNG or JPEG</div>
+                <div>Click to select an encoded PNG image or drag & drop</div>
+                <div style="font-size: 12px; color: #999; margin-top: 5px;">PNG only (JPEG not supported)</div>
             </div>
-            <input type="file" id="decode-file" accept="image/png,image/jpeg,image/jpg" onchange="handleDecodeFile(this.files[0])">
+            <input type="file" id="decode-file" accept="image/png" onchange="handleDecodeFile(this.files[0])">
 
             <div class="preview" id="decode-preview">
                 <strong>File Information:</strong>
@@ -252,10 +226,6 @@
                 <div class="progress-bar">
                     <div class="progress-fill" id="decode-progress-fill"></div>
                 </div>
-            </div>
-
-            <div class="info">
-                💡 <strong>Tip:</strong> Only upload images that were created by this tool's encoder.
             </div>
         </div>
     </div>
@@ -363,17 +333,14 @@
 
                 document.getElementById('encode-progress-fill').style.width = '70%';
 
-                // Convert to selected format
-                const format = document.querySelector('input[name="format"]:checked').value;
-                const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
-                encodedImageData = canvas.toDataURL(mimeType, 0.95);
+                // Convert to PNG
+                encodedImageData = canvas.toDataURL('image/png');
                 
                 document.getElementById('encode-image').src = encodedImageData;
                 document.getElementById('encode-info').innerHTML = `
                     Original File: ${originalFileName}<br>
                     Original Size: ${formatBytes(bytes.length)}<br>
-                    Image Dimensions: ${dimension}x${dimension}<br>
-                    Format: ${format.toUpperCase()}
+                    Image Dimensions: ${dimension}x${dimension}
                 `;
                 
                 document.getElementById('encode-preview').classList.add('show');
@@ -480,8 +447,7 @@
 
         function downloadImage() {
             const link = document.createElement('a');
-            const format = document.querySelector('input[name="format"]:checked').value;
-            link.download = originalFileName + '.' + format;
+            link.download = originalFileName + '.png';
             link.href = encodedImageData;
             link.click();
         }
