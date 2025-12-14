@@ -170,7 +170,40 @@
             transition: width 0.3s;
         }
 
-        .format-options {
+        #decode-content-preview {
+            margin-top: 20px;
+        }
+
+        #decode-content-preview .preview-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #decode-content-preview .preview-content {
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow: auto;
+        }
+
+        #decode-content-preview img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+
+        #decode-content-preview pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: monospace;
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .btn-center {
+            text-align: center;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
@@ -193,10 +226,12 @@
             <input type="file" id="encode-file" onchange="handleEncodeFile(this.files[0])">
 
             <div class="preview" id="encode-preview">
+                <div class="btn-center">
+                    <button class="btn" onclick="downloadImage()">💾 Download Image</button>
+                </div>
                 <strong>Generated Image:</strong>
                 <img id="encode-image" alt="Encoded image">
                 <div class="file-info" id="encode-info"></div>
-                <button class="btn" onclick="downloadImage()">💾 Download Image</button>
             </div>
 
             <div class="progress" id="encode-progress">
@@ -216,7 +251,9 @@
             <input type="file" id="decode-file" accept="image/png" onchange="handleDecodeFile(this.files[0])">
 
             <div class="preview" id="decode-preview">
-                <button class="btn" onclick="downloadDecodedFile()">💾 Download Original File</button>
+                <div class="btn-center">
+                    <button class="btn" onclick="downloadDecodedFile()">💾 Download Original File</button>
+                </div>
                 <div><strong>File Information:</strong></div>
                 <div class="file-info" id="decode-info"></div>
                 <div id="decode-content-preview"></div>
@@ -468,11 +505,20 @@
 
             // Check if it's an image
             if (mimeType.startsWith('image/')) {
+                const title = document.createElement('div');
+                title.className = 'preview-title';
+                title.textContent = 'Preview:';
+                
+                const content = document.createElement('div');
+                content.className = 'preview-content';
+                
                 const img = document.createElement('img');
                 img.src = URL.createObjectURL(blob);
                 img.style.maxWidth = '100%';
-                previewDiv.innerHTML = '<div><strong>Preview:</strong></div>';
-                previewDiv.appendChild(img);
+                
+                content.appendChild(img);
+                previewDiv.appendChild(title);
+                previewDiv.appendChild(content);
             }
             // Check if it's text
             else if (mimeType.startsWith('text/') || 
@@ -482,24 +528,42 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const text = e.target.result;
+                    
+                    const title = document.createElement('div');
+                    title.className = 'preview-title';
+                    title.textContent = 'Preview:';
+                    
+                    const content = document.createElement('div');
+                    content.className = 'preview-content';
+                    
                     const pre = document.createElement('pre');
-                    pre.style.backgroundColor = '#f5f5f5';
                     // Limit preview to first 1000 characters
                     pre.textContent = text.length > 1000 ? text.substring(0, 1000) + '\n\n... (truncated)' : text;
-                    previewDiv.innerHTML = '<div><strong>Preview:</strong></div>';
-                    previewDiv.appendChild(pre);
+                    
+                    content.appendChild(pre);
+                    previewDiv.appendChild(title);
+                    previewDiv.appendChild(content);
                 };
                 reader.readAsText(blob);
             }
             // Check if it's a PDF
             else if (mimeType === 'application/pdf') {
+                const title = document.createElement('div');
+                title.className = 'preview-title';
+                title.textContent = 'Preview:';
+                
+                const content = document.createElement('div');
+                content.className = 'preview-content';
+                
                 const iframe = document.createElement('iframe');
                 iframe.src = URL.createObjectURL(blob);
                 iframe.style.width = '100%';
                 iframe.style.height = '400px';
                 iframe.style.border = 'none';
-                previewDiv.innerHTML = '<div><strong>Preview:</strong></div>';
-                previewDiv.appendChild(iframe);
+                
+                content.appendChild(iframe);
+                previewDiv.appendChild(title);
+                previewDiv.appendChild(content);
             }
         }
 
