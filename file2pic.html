@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary File ↔ Image Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: #f8f9ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #f0f4ff;
+            border-color: #764ba2;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .preview {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .preview.show {
+            display: block;
+        }
+
+        .preview img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #1565c0;
+        }
+
+        .file-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .progress {
+            margin-top: 15px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .format-options {
+            margin: 20px 0;
+        }
+
+        .format-options label {
+            margin-right: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ Binary File ↔ Image Converter</h1>
+        <p class="subtitle">Convert any file to an image (PNG/JPG) and back - all in your browser!</p>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('encode')">Encode File → Image</button>
+            <button class="tab" onclick="switchTab('decode')">Decode Image → File</button>
+        </div>
+
+        <!-- Encode Tab -->
+        <div id="encode-tab" class="tab-content active">
+            <div class="upload-area" id="encode-upload" onclick="document.getElementById('encode-file').click()">
+                <div class="upload-icon">📁</div>
+                <div>Click to select a file or drag & drop</div>
+                <div style="font-size: 12px; color: #999; margin-top: 5px;">Any file type supported</div>
+            </div>
+            <input type="file" id="encode-file" onchange="handleEncodeFile(this.files[0])">
+
+            <div class="format-options">
+                <strong>Output Format:</strong><br>
+                <label><input type="radio" name="format" value="png" checked> PNG (Lossless, larger file)</label>
+                <label><input type="radio" name="format" value="jpeg"> JPEG (Lossy, smaller file)</label>
+            </div>
+
+            <div class="preview" id="encode-preview">
+                <strong>Generated Image:</strong>
+                <img id="encode-image" alt="Encoded image">
+                <div class="file-info" id="encode-info"></div>
+                <button class="btn" onclick="downloadImage()">💾 Download Image</button>
+            </div>
+
+            <div class="progress" id="encode-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="encode-progress-fill"></div>
+                </div>
+            </div>
+
+            <div class="info">
+                💡 <strong>Tip:</strong> PNG format preserves all data perfectly but creates larger images. JPEG creates smaller images but may have minor artifacts.
+            </div>
+        </div>
+
+        <!-- Decode Tab -->
+        <div id="decode-tab" class="tab-content">
+            <div class="upload-area" id="decode-upload" onclick="document.getElementById('decode-file').click()">
+                <div class="upload-icon">🖼️</div>
+                <div>Click to select an encoded image or drag & drop</div>
+                <div style="font-size: 12px; color: #999; margin-top: 5px;">PNG or JPEG</div>
+            </div>
+            <input type="file" id="decode-file" accept="image/png,image/jpeg,image/jpg" onchange="handleDecodeFile(this.files[0])">
+
+            <div class="preview" id="decode-preview">
+                <strong>File Information:</strong>
+                <div class="file-info" id="decode-info"></div>
+                <button class="btn" onclick="downloadDecodedFile()">💾 Download Original File</button>
+            </div>
+
+            <div class="progress" id="decode-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="decode-progress-fill"></div>
+                </div>
+            </div>
+
+            <div class="info">
+                💡 <strong>Tip:</strong> Only upload images that were created by this tool's encoder.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let encodedImageData = null;
+        let decodedFileData = null;
+        let originalFileName = '';
+        let originalFileType = '';
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab + '-tab').classList.add('active');
+        }
+
+        // Drag and drop handlers
+        ['encode-upload', 'decode-upload'].forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                el.classList.add('dragover');
+            });
+            el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+            el.addEventListener('drop', (e) => {
+                e.preventDefault();
+                el.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (id === 'encode-upload') handleEncodeFile(file);
+                else handleDecodeFile(file);
+            });
+        });
+
+        async function handleEncodeFile(file) {
+            if (!file) return;
+
+            document.getElementById('encode-progress').style.display = 'block';
+            document.getElementById('encode-progress-fill').style.width = '30%';
+
+            originalFileName = file.name;
+            originalFileType = file.type || 'application/octet-stream';
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const arrayBuffer = e.target.result;
+                const bytes = new Uint8Array(arrayBuffer);
+
+                // Create metadata header
+                const metadata = {
+                    name: originalFileName,
+                    type: originalFileType,
+                    size: bytes.length
+                };
+                const metadataStr = JSON.stringify(metadata);
+                const metadataBytes = new TextEncoder().encode(metadataStr);
+                const metadataLength = metadataBytes.length;
+
+                // Calculate image dimensions
+                const headerSize = 4 + metadataLength; // 4 bytes for metadata length + metadata
+                const totalBytes = headerSize + bytes.length;
+                const pixelsNeeded = Math.ceil(totalBytes / 3); // 3 bytes per pixel (RGB)
+                const dimension = Math.ceil(Math.sqrt(pixelsNeeded));
+                
+                // Create canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = dimension;
+                canvas.height = dimension;
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.createImageData(dimension, dimension);
+                
+                // Write metadata length (4 bytes)
+                const lengthBytes = new Uint8Array(4);
+                new DataView(lengthBytes.buffer).setUint32(0, metadataLength, false);
+                
+                // Combine all data
+                const allData = new Uint8Array(totalBytes);
+                allData.set(lengthBytes, 0);
+                allData.set(metadataBytes, 4);
+                allData.set(bytes, headerSize);
+                
+                // Write to image
+                for (let i = 0; i < allData.length; i++) {
+                    imageData.data[i] = allData[i];
+                }
+                // Fill remaining with 255 (white) and set alpha to 255
+                for (let i = allData.length; i < imageData.data.length; i += 4) {
+                    imageData.data[i] = 255;
+                    imageData.data[i + 1] = 255;
+                    imageData.data[i + 2] = 255;
+                    imageData.data[i + 3] = 255;
+                }
+                for (let i = 3; i < imageData.data.length; i += 4) {
+                    imageData.data[i] = 255;
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+
+                document.getElementById('encode-progress-fill').style.width = '70%';
+
+                // Convert to selected format
+                const format = document.querySelector('input[name="format"]:checked').value;
+                const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+                encodedImageData = canvas.toDataURL(mimeType, 0.95);
+                
+                document.getElementById('encode-image').src = encodedImageData;
+                document.getElementById('encode-info').innerHTML = `
+                    Original File: ${originalFileName}<br>
+                    Original Size: ${formatBytes(bytes.length)}<br>
+                    Image Dimensions: ${dimension}x${dimension}<br>
+                    Format: ${format.toUpperCase()}
+                `;
+                
+                document.getElementById('encode-preview').classList.add('show');
+                document.getElementById('encode-progress-fill').style.width = '100%';
+                setTimeout(() => {
+                    document.getElementById('encode-progress').style.display = 'none';
+                    document.getElementById('encode-progress-fill').style.width = '0%';
+                }, 500);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function handleDecodeFile(file) {
+            if (!file) return;
+
+            document.getElementById('decode-progress').style.display = 'block';
+            document.getElementById('decode-progress-fill').style.width = '30%';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                    
+                    document.getElementById('decode-progress-fill').style.width = '60%';
+
+                    // Read metadata length
+                    const metadataLength = new DataView(imageData.data.buffer).getUint32(0, false);
+                    
+                    // Read metadata
+                    const metadataBytes = imageData.data.slice(4, 4 + metadataLength);
+                    const metadataStr = new TextDecoder().decode(metadataBytes);
+                    const metadata = JSON.parse(metadataStr);
+                    
+                    // Read file data
+                    const headerSize = 4 + metadataLength;
+                    const fileData = imageData.data.slice(headerSize, headerSize + metadata.size);
+                    
+                    decodedFileData = new Blob([fileData], { type: metadata.type });
+                    originalFileName = metadata.name;
+                    
+                    document.getElementById('decode-info').innerHTML = `
+                        File Name: ${metadata.name}<br>
+                        File Type: ${metadata.type}<br>
+                        File Size: ${formatBytes(metadata.size)}<br>
+                        Status: ✅ Successfully decoded
+                    `;
+                    
+                    document.getElementById('decode-preview').classList.add('show');
+                    document.getElementById('decode-progress-fill').style.width = '100%';
+                    setTimeout(() => {
+                        document.getElementById('decode-progress').style.display = 'none';
+                        document.getElementById('decode-progress-fill').style.width = '0%';
+                    }, 500);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            const format = document.querySelector('input[name="format"]:checked').value;
+            link.download = originalFileName + '.' + format;
+            link.href = encodedImageData;
+            link.click();
+        }
+
+        function downloadDecodedFile() {
+            const link = document.createElement('a');
+            link.download = originalFileName;
+            link.href = URL.createObjectURL(decodedFileData);
+            link.click();
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>
