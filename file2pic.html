@@ -338,19 +338,25 @@
                 allData.set(metadataBytes, 4);
                 allData.set(bytes, headerSize);
                 
-                // Write to image
-                for (let i = 0; i < allData.length; i++) {
-                    imageData.data[i] = allData[i];
-                }
-                // Fill remaining with 255 (white) and set alpha to 255
-                for (let i = allData.length; i < imageData.data.length; i += 4) {
-                    imageData.data[i] = 255;
-                    imageData.data[i + 1] = 255;
-                    imageData.data[i + 2] = 255;
-                    imageData.data[i + 3] = 255;
-                }
-                for (let i = 3; i < imageData.data.length; i += 4) {
-                    imageData.data[i] = 255;
+                // Write to image (skip alpha channel - only write to RGB)
+                let dataIndex = 0;
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    if (dataIndex < allData.length) {
+                        imageData.data[i] = allData[dataIndex++]; // R
+                    } else {
+                        imageData.data[i] = 255; // R
+                    }
+                    if (dataIndex < allData.length) {
+                        imageData.data[i + 1] = allData[dataIndex++]; // G
+                    } else {
+                        imageData.data[i + 1] = 255; // G
+                    }
+                    if (dataIndex < allData.length) {
+                        imageData.data[i + 2] = allData[dataIndex++]; // B
+                    } else {
+                        imageData.data[i + 2] = 255; // B
+                    }
+                    imageData.data[i + 3] = 255; // A (always 255)
                 }
                 
                 ctx.putImageData(imageData, 0, 0);
@@ -399,19 +405,58 @@
                     
                     document.getElementById('decode-progress-fill').style.width = '60%';
 
-                    // Read metadata length
-                    const metadataLength = new DataView(imageData.data.buffer).getUint32(0, false);
+                    // Read metadata length from RGB channels only
+                    const metadataLengthBytes = new Uint8Array(4);
+                    metadataLengthBytes[0] = imageData.data[0]; // R of pixel 0
+                    metadataLengthBytes[1] = imageData.data[1]; // G of pixel 0
+                    metadataLengthBytes[2] = imageData.data[2]; // B of pixel 0
+                    metadataLengthBytes[3] = imageData.data[4]; // R of pixel 1
+                    const metadataLength = new DataView(metadataLengthBytes.buffer).getUint32(0, false);
                     
-                    // Read metadata
-                    const metadataBytes = imageData.data.slice(4, 4 + metadataLength);
+                    // Validate metadata length
+                    if (metadataLength > 10000 || metadataLength < 10) {
+                        alert('Error: This does not appear to be a valid encoded image. Metadata length: ' + metadataLength);
+                        document.getElementById('decode-progress').style.display = 'none';
+                        return;
+                    }
+                    
+                    // Read metadata from RGB channels
+                    const metadataBytes = new Uint8Array(metadataLength);
+                    let byteIndex = 0;
+                    let pixelDataIndex = 4; // Start after the 4 length bytes (which used first pixel's RGB and second pixel's R)
+                    
+                    while (byteIndex < metadataLength) {
+                        const pixelOffset = Math.floor(pixelDataIndex / 3) * 4 + (pixelDataIndex % 3);
+                        metadataBytes[byteIndex] = imageData.data[pixelOffset];
+                        byteIndex++;
+                        pixelDataIndex++;
+                    }
+                    
                     const metadataStr = new TextDecoder().decode(metadataBytes);
-                    const metadata = JSON.parse(metadataStr);
+                    let metadata;
+                    try {
+                        metadata = JSON.parse(metadataStr);
+                    } catch (e) {
+                        alert('Error: Could not decode image metadata. Metadata string: ' + metadataStr.substring(0, 100));
+                        document.getElementById('decode-progress').style.display = 'none';
+                        return;
+                    }
                     
                     // Read file data
                     const headerSize = 4 + metadataLength;
-                    const fileData = imageData.data.slice(headerSize, headerSize + metadata.size);
+                    const fileDataArray = new Uint8Array(metadata.size);
                     
-                    decodedFileData = new Blob([fileData], { type: metadata.type });
+                    // Copy pixel data (RGB only, skip alpha channel)
+                    let dataIdx = 0;
+                    let pixelIdx = headerSize;
+                    while (dataIdx < metadata.size) {
+                        const pixelOffset = Math.floor(pixelIdx / 3) * 4 + (pixelIdx % 3);
+                        fileDataArray[dataIdx] = imageData.data[pixelOffset];
+                        dataIdx++;
+                        pixelIdx++;
+                    }
+                    
+                    decodedFileData = new Blob([fileDataArray], { type: metadata.type });
                     originalFileName = metadata.name;
                     
                     document.getElementById('decode-info').innerHTML = `
